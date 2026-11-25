@@ -59,6 +59,7 @@ def _render_equity_svg(initial_bankroll: float, trades: list[dict[str, Any]]) ->
 def render_dashboard_html(engine: PaperTradingEngine) -> str:
     summary: PerformanceSummary = engine.summarize()
     trades = engine.list_trades(limit=100)
+    top10_picks = engine.list_top10(limit=20)
     runs = engine.list_scan_runs(limit=10)
     equity = summary.cash_usd + summary.open_exposure_usd
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -157,6 +158,35 @@ def render_dashboard_html(engine: PaperTradingEngine) -> str:
         )
     if not run_rows:
         run_rows.append('<tr><td colspan="5" class="muted center">Сканирований ещё не было</td></tr>')
+
+    top10_rows = []
+    for idx, p in enumerate(top10_picks, start=1):
+        side_cls = "badge-green" if p["side"] == "YES" else "badge-amber"
+        st_cls = "badge-blue" if p["status"] == "OPEN" else "badge-gray"
+        bid_str = f"${float(p['current_bid']):.3f}" if p["current_bid"] is not None else "—"
+        pnl_val = float(p["pnl_usd"]) if p["status"] == "CLOSED" and p["pnl_usd"] is not None else float(p["unrealized_pnl"] or 0.0)
+        top10_rows.append(
+            f"""
+            <tr>
+              <td class="muted">{idx}</td>
+              <td><span class="badge badge-dark">{_esc(p['strategy'])}</span></td>
+              <td>
+                <div class="q-title">{_esc(p['question'])}</div>
+                <div class="muted small">{_esc(p['outcome_label'])} · snapshots: {p['snapshot_count']}</div>
+              </td>
+              <td><span class="badge {side_cls}">{_esc(p['side'])}</span></td>
+              <td>${float(p['entry_price']):.3f}</td>
+              <td>{bid_str}</td>
+              <td>{float(p['model_prob']) * 100:.1f}%</td>
+              <td class="pos">+{float(p['expected_edge']) * 100:.1f}%</td>
+              <td>$100.00</td>
+              <td><span class="badge {st_cls}">{_esc(p['status'])}</span></td>
+              <td>{_fmt_pnl(pnl_val)}</td>
+            </tr>
+            """
+        )
+    if not top10_rows:
+        top10_rows.append('<tr><td colspan="11" class="muted center">Топ-10 рынков ещё не сформирован</td></tr>')
 
     equity_svg = _render_equity_svg(summary.initial_bankroll, trades)
 
@@ -267,6 +297,21 @@ def render_dashboard_html(engine: PaperTradingEngine) -> str:
     <h2>Equity Curve</h2>
     <div class="card">
       {equity_svg}
+    </div>
+
+    <h2>Top 10 High-Conviction Markets ($100 / Market)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Strategy</th><th>Market</th><th>Side</th>
+            <th>Entry</th><th>Bid</th><th>Model</th><th>Edge</th><th>Stake</th><th>Status</th><th>PnL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {"".join(top10_rows)}
+        </tbody>
+      </table>
     </div>
 
     <h2>Strategies</h2>

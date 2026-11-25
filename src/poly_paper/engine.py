@@ -106,6 +106,42 @@ class PaperTradingEngine:
                     resolved_count INTEGER NOT NULL,
                     notes TEXT
                 );
+
+                CREATE TABLE IF NOT EXISTS top10_picks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    strategy TEXT NOT NULL,
+                    event_id TEXT NOT NULL,
+                    market_id TEXT NOT NULL,
+                    token_id TEXT NOT NULL,
+                    question TEXT NOT NULL,
+                    outcome_label TEXT NOT NULL,
+                    side TEXT NOT NULL,
+                    model_prob REAL NOT NULL,
+                    entry_price REAL NOT NULL,
+                    shares REAL NOT NULL,
+                    stake_usd REAL NOT NULL DEFAULT 100.0,
+                    expected_edge REAL NOT NULL,
+                    current_mid REAL,
+                    current_bid REAL,
+                    unrealized_pnl REAL DEFAULT 0.0,
+                    opened_at TEXT NOT NULL,
+                    last_updated TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'OPEN',
+                    resolved_outcome REAL,
+                    pnl_usd REAL,
+                    closed_at TEXT,
+                    notes TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS top10_snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pick_id INTEGER NOT NULL,
+                    captured_at TEXT NOT NULL,
+                    market_mid REAL NOT NULL,
+                    best_bid REAL,
+                    best_ask REAL,
+                    unrealized_pnl REAL NOT NULL
+                );
                 """
             )
             row = conn.execute("SELECT id FROM portfolio_state WHERE id = 1").fetchone()
@@ -438,11 +474,186 @@ class PaperTradingEngine:
         with self._connect() as conn:
             conn.execute("DELETE FROM trades")
             conn.execute("DELETE FROM scan_runs")
+            conn.execute("DELETE FROM top10_snapshots")
+            conn.execute("DELETE FROM top10_picks")
             conn.execute("DELETE FROM portfolio_state")
             conn.execute(
                 "INSERT INTO portfolio_state (id, initial_bankroll, cash_usd, created_at) VALUES (1, ?, ?, ?)",
                 (bankroll, bankroll, utc_now_iso()),
             )
+
+    def update_top10_portfolio(
+        self,
+        signals: list[TradeSignal],
+        client: PolymarketClient,
+        stake_per_market: float = 100.0,
+        max_slots: int = 10,
+    ) -> dict[str, int]:
+        """Maintain a separate Top-10 ($100/market) portfolio with time-series snapshots."""
+        now = utc_now_iso()
+        resolved_count = 0
+        updated_count = 0
+
+        with self._connect() as conn:
+            open_picks = conn.execute("SELECT * FROM top10_picks WHERE status = 'OPEN' ORDER BY id ASC").fetchall()
+
+        for pick in open_picks:
+            market = client.fetch_market(str(pick["market_id"]))
+            if market is not None and market.resolved_yes is not None:
+                outcome_for_side = market.resolved_yes if pick["side"] == "YES" else (1.0 - market.resolved_yes)
+                payout = float(pick["shares"]) * outcome_for_side
+                pnl = payout - float(pick["stake_usd"])
+                with self._connect() as conn:
+                    conn.execute(
+                        """
+                        UPDATE top10_picks
+                        SET status = 'CLOSED', resolved_outcome = ?, pnl_usd = ?,
+                            unrealized_pnl = ?, last_updated = ?, closed_at = ?
+                        WHERE id = ?
+                        """,
+                        (outcome_for_side, pnl, pnl, now, now, pick["id"]),
+                    )
+                resolved_count += 1
+                continue
+
+            try:
+                book = client.fetch_orderbook(str(pick["token_id"]), use_cache=False)
+            except Exception:
+                continue
+
+            mid = book.mid_price if book.mid_price is not None else float(pick["entry_price"])
+            bid = book.best_bid
+            ask = book.best_ask
+            mark_price = bid if bid is not None else mid
+            unrealized = float(pick["shares"]) * mark_price - float(pick["stake_usd"])
+
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    UPDATE top10_picks
+                    SET current_mid = ?, current_bid = ?, unrealized_pnl = ?, last_updated = ?
+                    WHERE id = ?
+                    """,
+                    (mid, bid, unrealized, now, pick["id"]),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO top10_snapshots (pick_id, captured_at, market_mid, best_bid, best_ask, unrealized_pnl)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (pick["id"], now, mid, bid, ask, unrealized),
+                )
+            updated_count += 1
+
+        with self._connect() as conn:
+            active_rows = conn.execute("SELECT market_id FROM top10_picks WHERE status = 'OPEN'").fetchall()
+            open_market_ids = {str(r["market_id"]) for r in active_rows}
+            open_slots_used = len(open_market_ids)
+
+        opened_count = 0
+        ranked = sorted(signals, key=lambda s: s.expected_edge, reverse=True)
+        for sig in ranked:
+            if open_slots_used >= max_slots:
+                break
+            if sig.market_id in open_market_ids or sig.strategy == "negrisk_arb":
+                continue
+
+            try:
+                book = client.fetch_orderbook(sig.token_id)
+            except Exception:
+                continue
+
+            sim = simulate_buy_fill(
+                book=book,
+                target_usd=stake_per_market,
+                slippage_buffer=self.config.slippage_buffer,
+                max_spread=self.config.max_spread,
+                min_fill_ratio=0.50,
+            )
+            if not sim.executable:
+                continue
+
+            real_edge = sig.model_prob - sim.effective_price
+            if real_edge < self.config.min_edge:
+                continue
+
+            shares = stake_per_market / sim.effective_price
+            mark_price = sim.best_bid if sim.best_bid is not None else sim.mid_price
+            unrealized = shares * mark_price - stake_per_market
+
+            with self._connect() as conn:
+                cur = conn.execute(
+                    """
+                    INSERT INTO top10_picks (
+                        strategy, event_id, market_id, token_id, question, outcome_label, side,
+                        model_prob, entry_price, shares, stake_usd, expected_edge,
+                        current_mid, current_bid, unrealized_pnl, opened_at, last_updated, status, notes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
+                    """,
+                    (
+                        sig.strategy, sig.event_id, sig.market_id, sig.token_id, sig.question,
+                        sig.outcome_label, sig.side, sig.model_prob, sim.effective_price,
+                        shares, stake_per_market, real_edge, sim.mid_price, sim.best_bid,
+                        unrealized, now, now, sig.notes,
+                    ),
+                )
+                pick_id = cur.lastrowid
+                conn.execute(
+                    """
+                    INSERT INTO top10_snapshots (pick_id, captured_at, market_mid, best_bid, best_ask, unrealized_pnl)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (pick_id, now, sim.mid_price, sim.best_bid, sim.best_ask, unrealized),
+                )
+            open_market_ids.add(sig.market_id)
+            open_slots_used += 1
+            opened_count += 1
+
+        return {"opened": opened_count, "updated": updated_count, "resolved": resolved_count}
+
+    def list_top10(self, limit: int = 30) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT p.*,
+                       (SELECT COUNT(*) FROM top10_snapshots s WHERE s.pick_id = p.id) AS snapshot_count
+                FROM top10_picks p
+                ORDER BY CASE WHEN p.status = 'OPEN' THEN 0 ELSE 1 END, p.expected_edge DESC, p.id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def format_top10_report(self) -> str:
+        picks = self.list_top10(limit=30)
+        open_picks = [p for p in picks if p["status"] == "OPEN"]
+        closed_picks = [p for p in picks if p["status"] == "CLOSED"]
+        total_unrealized = sum(float(p["unrealized_pnl"] or 0.0) for p in open_picks)
+        total_realized = sum(float(p["pnl_usd"] or 0.0) for p in closed_picks)
+
+        lines = [
+            "# Top 10 High-Conviction Markets ($100 / Market)",
+            "",
+            f"- Active Slots: **{len(open_picks)} / 10** (${len(open_picks) * 100:,.2f} deployed)",
+            f"- Open Unrealized PnL: **${total_unrealized:+,.2f}**",
+            f"- Closed Realized PnL: **${total_realized:+,.2f}** ({len(closed_picks)} settled)",
+            "",
+            "| # | Status | Strategy | Side | Market | Entry | Now (Bid) | Model | Edge | PnL ($100) | Snapshots |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|",
+        ]
+        for idx, p in enumerate(picks, start=1):
+            bid_str = f"${float(p['current_bid']):.3f}" if p["current_bid"] is not None else "—"
+            pnl_val = float(p["pnl_usd"]) if p["status"] == "CLOSED" and p["pnl_usd"] is not None else float(p["unrealized_pnl"] or 0.0)
+            lines.append(
+                f"| {idx} | {p['status']} | `{p['strategy']}` | **{p['side']}** | "
+                f"{p['question']} ({p['outcome_label']}) | ${float(p['entry_price']):.3f} | {bid_str} | "
+                f"{float(p['model_prob']) * 100:.1f}% | +{float(p['expected_edge']) * 100:.1f}% | "
+                f"${pnl_val:+.2f} | {p['snapshot_count']} |"
+            )
+        if not picks:
+            lines.append("| — | — | — | — | Пока нет отобранных рынков | — | — | — | — | — | 0 |")
+        return "\n".join(lines) + "\n"
 
     def summarize(self) -> PerformanceSummary:
         with self._connect() as conn:

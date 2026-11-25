@@ -231,6 +231,29 @@ class TestPaperEngineAndBrier(unittest.TestCase):
             self.assertEqual(engine.summarize().total_trades, 0)
             self.assertAlmostEqual(engine.get_cash(), 500.0)
 
+    def test_top10_separate_100_dollar_tracker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = TraderConfig(db_path=Path(tmp) / "top10.db", llm_enabled=False, slippage_buffer=0.005)
+            engine = PaperTradingEngine(cfg)
+            sig = TradeSignal("weather_ensemble", "ev1", "m1", "tok1", "NYC High?", "50-51F", "YES", 0.78, 0.45, 0.32)
+            book1 = OrderBook("tok1", (OrderLevel(0.44, 500),), (OrderLevel(0.46, 500),))
+            book2 = OrderBook("tok1", (OrderLevel(0.55, 500),), (OrderLevel(0.57, 500),))
+            client = _StubClient(books={"tok1": book1})
+
+            stats = engine.update_top10_portfolio([sig], client, stake_per_market=100.0, max_slots=10)
+            self.assertEqual(stats["opened"], 1)
+
+            # Second cycle records a new snapshot with updated bid
+            client._books["tok1"] = book2
+            stats2 = engine.update_top10_portfolio([], client, stake_per_market=100.0, max_slots=10)
+            self.assertEqual(stats2["updated"], 1)
+
+            picks = engine.list_top10()
+            self.assertEqual(len(picks), 1)
+            self.assertEqual(picks[0]["stake_usd"], 100.0)
+            self.assertEqual(picks[0]["snapshot_count"], 2)
+            self.assertGreater(picks[0]["unrealized_pnl"], 0.0)
+
 
 class TestScienceStrategy(unittest.TestCase):
     def test_science_detection_shrinkage_and_signal(self) -> None:

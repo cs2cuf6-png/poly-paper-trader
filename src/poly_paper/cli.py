@@ -160,7 +160,17 @@ def cmd_science(config: TraderConfig, limit: int = 8) -> None:
         print(_c("Активных научных рынков под фильтр сейчас не найдено.", "33"))
 
 
-def cmd_run(config: TraderConfig, output_md: str | None = None) -> None:
+def cmd_top10(config: TraderConfig, output_md: str | None = None) -> None:
+    engine = PaperTradingEngine(config)
+    md = engine.format_top10_report()
+    print()
+    print(md)
+    if output_md:
+        Path(output_md).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_md).write_text(md, encoding="utf-8")
+
+
+def cmd_run(config: TraderConfig, output_md: str | None = None, top10_md: str | None = None) -> None:
     _banner("POLYMARKET PAPER TRADER — FULL CYCLE")
     closed = cmd_resolve(config)
 
@@ -179,6 +189,7 @@ def cmd_run(config: TraderConfig, output_md: str | None = None) -> None:
     science_signals = scan_science_markets(client, all_events, config)
     all_signals = weather_signals + arb_signals + science_signals
 
+    top10_stats = engine.update_top10_portfolio(all_signals, client, stake_per_market=100.0, max_slots=10)
     opened = engine.execute_signals(all_signals, client, analyst=analyst)
     engine.log_scan_run(
         events_scanned=len(all_events),
@@ -190,10 +201,14 @@ def cmd_run(config: TraderConfig, output_md: str | None = None) -> None:
     print(
         f"Событий: {_c(str(len(all_events)), '1')} | "
         f"Сигналов: {_c(str(len(all_signals)), '33')} | "
-        f"Открыто: {_c(str(len(opened)), '1;32')}"
+        f"Открыто: {_c(str(len(opened)), '1;32')} | "
+        f"Top-10 ($100): +{top10_stats['opened']} откр., {top10_stats['updated']} обновл., {top10_stats['resolved']} закр."
     )
 
     cmd_report(config, output_md=output_md)
+    if top10_md:
+        Path(top10_md).parent.mkdir(parents=True, exist_ok=True)
+        Path(top10_md).write_text(engine.format_top10_report(), encoding="utf-8")
     dash = write_dashboard(engine)
     print(_c(f"\n✓ HTML-дашборд обновлён: {dash}", "32"))
 
@@ -364,8 +379,12 @@ def main(argv: list[str] | None = None) -> int:
     p_dash.add_argument("--output", default="data/dashboard.html", help="Output HTML path")
     p_dash.add_argument("--no-open", action="store_true", help="Do not open browser automatically")
 
-    p_run = sub.add_parser("run", help="Full cycle: resolve -> scan -> report -> dashboard")
+    p_run = sub.add_parser("run", help="Full cycle: resolve -> scan -> top10 -> report -> dashboard")
     p_run.add_argument("--output-md", default=None, help="Optional path to save markdown report")
+    p_run.add_argument("--top10-md", default=None, help="Optional path to save Top-10 ($100/market) report")
+
+    p_top10 = sub.add_parser("top10", help="Show separate Top-10 ($100/market) portfolio & snapshots")
+    p_top10.add_argument("--output-md", default=None, help="Optional path to save Top-10 markdown report")
 
     p_science = sub.add_parser("science", help="Inspect active science/chemistry/FDA markets with live DB evidence")
     p_science.add_argument("--limit", type=int, default=8, help="Max markets to display")
@@ -392,7 +411,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "dashboard":
         cmd_dashboard(config, output_html=args.output, open_browser=not args.no_open)
     elif args.command == "run":
-        cmd_run(config, output_md=args.output_md)
+        cmd_run(config, output_md=args.output_md, top10_md=args.top10_md)
+    elif args.command == "top10":
+        cmd_top10(config, output_md=args.output_md)
     elif args.command == "science":
         cmd_science(config, limit=args.limit)
     elif args.command == "setup":
