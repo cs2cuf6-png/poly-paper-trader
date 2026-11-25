@@ -92,4 +92,4 @@ uv run --no-project python run.py
    - `NVIDIA_API_KEY` — бесплатный ключ [NVIDIA NIM](https://build.nvidia.com/)
    - `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` — для алертов в Telegram
 3. В разделе **Actions** разрешите workflow **Polymarket Paper Trader** (и при желании включите Read and write permissions в **Settings → Actions → General → Workflow permissions**).
-4. Бот будет автоматически запускаться каждые 30 минут, обновлять `data/paper_trader.db`, `data/REPORT.md` и `data/dashboard.html`.
+4. Бот будет автоматически запускаться каждые 5 минут, обновлять `data/paper_trader.db`, `data/REPORT.md` и `data/dashboard.html`.

@@ -2,8 +2,8 @@ name: Polymarket Paper Trader
 
 on:
   schedule:
-    # Запуск каждые 30 минут на бесплатных серверах GitHub Actions
-    - cron: "*/30 * * * *"
+    # Запуск каждые 5 минут на бесплатных серверах GitHub Actions
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
