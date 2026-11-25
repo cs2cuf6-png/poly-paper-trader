@@ -55,10 +55,32 @@ class TestOrderbookSimulation(unittest.TestCase):
             asks=(OrderLevel(0.50, 20.0), OrderLevel(0.52, 50.0)),
         )
         # Target $20.40: fills 20 shares @ 0.50 ($10.00) + 20 shares @ 0.52 ($10.40) -> VWAP = 0.51
-        sim = simulate_buy_fill(book, target_usd=20.40, slippage_buffer=0.005, max_spread=0.05)
+        # With 1% taker fee + 0.005 slippage: 0.51 * 1.01 + 0.005 = 0.5201
+        sim = simulate_buy_fill(book, target_usd=20.40, slippage_buffer=0.005, max_spread=0.06, taker_fee_rate=0.01)
         self.assertTrue(sim.executable)
         self.assertAlmostEqual(sim.vwap_price, 0.51, places=5)
-        self.assertAlmostEqual(sim.effective_price, 0.515, places=5)
+        self.assertAlmostEqual(sim.effective_price, 0.5201, places=5)
+
+    def test_rejects_thin_book_vwap_trap_and_dead_bid(self) -> None:
+        # Reproduces the exact thin-book trap: tiny top ask near bid, then huge jump to 0.25
+        thin_trap = OrderBook(
+            token_id="trap",
+            bids=(OrderLevel(0.05, 50.0),),
+            asks=(OrderLevel(0.07, 5.0), OrderLevel(0.25, 500.0)),
+        )
+        sim_trap = simulate_buy_fill(thin_trap, target_usd=100.0, max_spread=0.06, max_price_impact=0.03)
+        self.assertFalse(sim_trap.executable)
+        self.assertIn("price impact", sim_trap.reason.lower())
+
+        # Reproduces dead bid ($0.004)
+        dead_bid = OrderBook(
+            token_id="dead",
+            bids=(OrderLevel(0.004, 100.0),),
+            asks=(OrderLevel(0.03, 500.0),),
+        )
+        sim_dead = simulate_buy_fill(dead_bid, target_usd=20.0, min_bid_price=0.03)
+        self.assertFalse(sim_dead.executable)
+        self.assertIn("dead", sim_dead.reason.lower())
 
     def test_rejects_wide_spread(self) -> None:
         book = OrderBook(
@@ -68,7 +90,7 @@ class TestOrderbookSimulation(unittest.TestCase):
         )
         sim = simulate_buy_fill(book, target_usd=10.0, max_spread=0.08)
         self.assertFalse(sim.executable)
-        self.assertIn("Spread too wide", sim.reason)
+        self.assertIn("spread too wide", sim.reason.lower())
 
     def test_parse_market_json_strings(self) -> None:
         raw = {
@@ -127,9 +149,10 @@ class TestWeatherStrategy(unittest.TestCase):
             bids=(OrderLevel(0.85, 500.0),),
             asks=(OrderLevel(0.87, 500.0),),
         )
-        sell_sim = simulate_sell_fill(book, shares_to_sell=50.0, slippage_buffer=0.005)
+        sell_sim = simulate_sell_fill(book, shares_to_sell=50.0, slippage_buffer=0.005, taker_fee_rate=0.01)
         self.assertTrue(sell_sim.executable)
-        self.assertAlmostEqual(sell_sim.effective_price, 0.845, places=5)
+        # 0.85 * 0.99 - 0.005 = 0.8365
+        self.assertAlmostEqual(sell_sim.effective_price, 0.8365, places=5)
 
         with tempfile.TemporaryDirectory() as tmp:
             cfg = TraderConfig(db_path=Path(tmp) / "tp.db", llm_enabled=False, slippage_buffer=0.005)

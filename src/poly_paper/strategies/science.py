@@ -421,17 +421,23 @@ def scan_science_markets(
 
             yes_sim = simulate_buy_fill(
                 yes_book,
-                target_usd=max(config.min_stake_usd, 15.0),
+                target_usd=max(config.min_stake_usd, 25.0),
                 slippage_buffer=config.slippage_buffer,
                 max_spread=config.max_spread,
                 min_fill_ratio=config.min_fill_ratio,
+                taker_fee_rate=config.taker_fee_rate,
+                max_price_impact=config.max_price_impact,
+                min_bid_price=config.min_bid_price,
             )
             no_sim = simulate_buy_fill(
                 no_book,
-                target_usd=max(config.min_stake_usd, 15.0),
+                target_usd=max(config.min_stake_usd, 25.0),
                 slippage_buffer=config.slippage_buffer,
                 max_spread=config.max_spread,
                 min_fill_ratio=config.min_fill_ratio,
+                taker_fee_rate=config.taker_fee_rate,
+                max_price_impact=config.max_price_impact,
+                min_bid_price=config.min_bid_price,
             )
             if not yes_sim.executable and not no_sim.executable:
                 continue

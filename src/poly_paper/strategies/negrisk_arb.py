@@ -53,6 +53,9 @@ def scan_negrisk_arbitrage(
                 slippage_buffer=config.slippage_buffer,
                 max_spread=config.max_spread,
                 min_fill_ratio=config.min_fill_ratio,
+                taker_fee_rate=config.taker_fee_rate,
+                max_price_impact=config.max_price_impact,
+                min_bid_price=config.min_bid_price,
             )
             if not sim.executable:
                 valid_bundle = False

@@ -226,6 +226,9 @@ class PaperTradingEngine:
                 slippage_buffer=self.config.slippage_buffer,
                 max_spread=self.config.max_spread,
                 min_fill_ratio=self.config.min_fill_ratio,
+                taker_fee_rate=self.config.taker_fee_rate,
+                max_price_impact=self.config.max_price_impact,
+                min_bid_price=self.config.min_bid_price,
             )
             if not sim.executable:
                 continue
@@ -380,6 +383,7 @@ class PaperTradingEngine:
                 shares_to_sell=float(row["shares"]),
                 slippage_buffer=self.config.slippage_buffer,
                 max_spread=self.config.max_spread,
+                taker_fee_rate=self.config.taker_fee_rate,
             )
             if not sim.executable:
                 continue
@@ -568,7 +572,10 @@ class PaperTradingEngine:
                 target_usd=stake_per_market,
                 slippage_buffer=self.config.slippage_buffer,
                 max_spread=self.config.max_spread,
-                min_fill_ratio=0.50,
+                min_fill_ratio=0.80,
+                taker_fee_rate=self.config.taker_fee_rate,
+                max_price_impact=self.config.max_price_impact,
+                min_bid_price=self.config.min_bid_price,
             )
             if not sim.executable:
                 continue

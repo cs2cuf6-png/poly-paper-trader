@@ -138,10 +138,13 @@ def simulate_buy_fill(
     book: OrderBook,
     target_usd: float,
     slippage_buffer: float = 0.005,
-    max_spread: float = 0.08,
+    max_spread: float = 0.06,
     min_fill_ratio: float = 0.80,
+    taker_fee_rate: float = 0.01,
+    max_price_impact: float = 0.03,
+    min_bid_price: float = 0.03,
 ) -> FillSimulation:
-    """Walk the real CLOB ask book to compute an honest VWAP buy execution."""
+    """Walk the real CLOB ask book with fees, slippage, and effective-spread checks."""
     best_bid = book.best_bid
     best_ask = book.best_ask
     mid_price = book.mid_price if book.mid_price is not None else 0.5
@@ -161,18 +164,32 @@ def simulate_buy_fill(
             reason="Empty ask orderbook",
         )
 
-    if spread > max_spread:
+    if best_bid is None or best_bid < min_bid_price:
         return FillSimulation(
             executable=False,
             vwap_price=best_ask,
-            effective_price=min(0.995, best_ask + slippage_buffer),
+            effective_price=min(0.995, best_ask * (1.0 + taker_fee_rate) + slippage_buffer),
             filled_usd=0.0,
             filled_shares=0.0,
             best_bid=best_bid,
             best_ask=best_ask,
             mid_price=mid_price,
             spread=spread,
-            reason=f"Spread too wide ({spread:.3f} > {max_spread:.3f})",
+            reason=f"Dead or missing bid ({best_bid} < {min_bid_price:.3f})",
+        )
+
+    if spread > max_spread:
+        return FillSimulation(
+            executable=False,
+            vwap_price=best_ask,
+            effective_price=min(0.995, best_ask * (1.0 + taker_fee_rate) + slippage_buffer),
+            filled_usd=0.0,
+            filled_shares=0.0,
+            best_bid=best_bid,
+            best_ask=best_ask,
+            mid_price=mid_price,
+            spread=spread,
+            reason=f"Top-of-book spread too wide ({spread:.3f} > {max_spread:.3f})",
         )
 
     remaining_usd = max(0.0, target_usd)
@@ -199,7 +216,7 @@ def simulate_buy_fill(
         return FillSimulation(
             executable=False,
             vwap_price=best_ask,
-            effective_price=min(0.995, best_ask + slippage_buffer),
+            effective_price=min(0.995, best_ask * (1.0 + taker_fee_rate) + slippage_buffer),
             filled_usd=filled_usd,
             filled_shares=filled_shares,
             best_bid=best_bid,
@@ -210,7 +227,37 @@ def simulate_buy_fill(
         )
 
     vwap = filled_usd / filled_shares
-    effective_price = min(0.995, vwap + slippage_buffer)
+    price_impact = vwap - best_ask
+    if price_impact > max_price_impact:
+        return FillSimulation(
+            executable=False,
+            vwap_price=vwap,
+            effective_price=min(0.995, vwap * (1.0 + taker_fee_rate) + slippage_buffer),
+            filled_usd=0.0,
+            filled_shares=0.0,
+            best_bid=best_bid,
+            best_ask=best_ask,
+            mid_price=mid_price,
+            spread=spread,
+            reason=f"VWAP price impact too high ({price_impact:.3f} > {max_price_impact:.3f})",
+        )
+
+    effective_price = min(0.995, vwap * (1.0 + taker_fee_rate) + slippage_buffer)
+    effective_spread = effective_price - best_bid
+    if effective_spread > max_spread + 0.02:
+        return FillSimulation(
+            executable=False,
+            vwap_price=vwap,
+            effective_price=effective_price,
+            filled_usd=0.0,
+            filled_shares=0.0,
+            best_bid=best_bid,
+            best_ask=best_ask,
+            mid_price=mid_price,
+            spread=effective_spread,
+            reason=f"Effective spread after fees/depth too wide ({effective_spread:.3f})",
+        )
+
     effective_shares = filled_usd / effective_price
 
     return FillSimulation(
@@ -222,7 +269,7 @@ def simulate_buy_fill(
         best_bid=best_bid,
         best_ask=best_ask,
         mid_price=mid_price,
-        spread=spread,
+        spread=effective_spread,
         reason="OK",
     )
 
@@ -231,10 +278,11 @@ def simulate_sell_fill(
     book: OrderBook,
     shares_to_sell: float,
     slippage_buffer: float = 0.005,
-    max_spread: float = 0.08,
+    max_spread: float = 0.06,
     min_fill_ratio: float = 0.90,
+    taker_fee_rate: float = 0.01,
 ) -> FillSimulation:
-    """Walk the real CLOB bid book to compute an honest VWAP sell execution."""
+    """Walk the real CLOB bid book to compute an honest VWAP sell execution with fees."""
     best_bid = book.best_bid
     best_ask = book.best_ask
     mid_price = book.mid_price if book.mid_price is not None else 0.5
@@ -258,7 +306,7 @@ def simulate_sell_fill(
         return FillSimulation(
             executable=False,
             vwap_price=best_bid,
-            effective_price=max(0.005, best_bid - slippage_buffer),
+            effective_price=max(0.005, best_bid * (1.0 - taker_fee_rate) - slippage_buffer),
             filled_usd=0.0,
             filled_shares=0.0,
             best_bid=best_bid,
@@ -286,7 +334,7 @@ def simulate_sell_fill(
         return FillSimulation(
             executable=False,
             vwap_price=best_bid,
-            effective_price=max(0.005, best_bid - slippage_buffer),
+            effective_price=max(0.005, best_bid * (1.0 - taker_fee_rate) - slippage_buffer),
             filled_usd=filled_usd,
             filled_shares=filled_shares,
             best_bid=best_bid,
@@ -297,7 +345,7 @@ def simulate_sell_fill(
         )
 
     vwap = filled_usd / filled_shares
-    effective_price = max(0.005, vwap - slippage_buffer)
+    effective_price = max(0.005, vwap * (1.0 - taker_fee_rate) - slippage_buffer)
     effective_usd = filled_shares * effective_price
 
     return FillSimulation(

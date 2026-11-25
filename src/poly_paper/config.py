@@ -38,7 +38,10 @@ class TraderConfig:
 
     # Entry & orderbook quality filters
     min_edge: float = 0.06               # Require >= 6% edge over executable ask
-    max_spread: float = 0.08             # Skip illiquid books with spread > 8c
+    max_spread: float = 0.06             # Max effective spread (effective_fill - best_bid) <= 6c
+    max_price_impact: float = 0.03       # Max VWAP slippage above best_ask <= 3c
+    min_bid_price: float = 0.03          # Reject dead/collapsed bid books (< 3c)
+    taker_fee_rate: float = 0.01         # 1.0% conservative taker fee / markup
     slippage_buffer: float = 0.005       # Conservative +0.5c fill penalty
     min_fill_ratio: float = 0.80         # Require >= 80% of target size available
     min_price: float = 0.04              # Avoid extreme lottery-ticket noise
@@ -46,6 +49,7 @@ class TraderConfig:
 
     # Strategy-specific settings
     negrisk_min_margin: float = 0.025    # Sum of YES asks must be < 0.975
+    weather_min_days_ahead: int = 1      # Skip same-day (lead_days=0) half-resolved markets
     weather_max_days_ahead: int = 3      # Forecast skill drops sharply past 3 days
     max_events_per_scan: int = 120
 
@@ -75,9 +79,13 @@ class TraderConfig:
             max_event_pct=_env_float("MAX_EVENT_PCT", 0.12),
             min_stake_usd=_env_float("MIN_STAKE_USD", 5.0),
             min_edge=_env_float("MIN_EDGE", 0.06),
-            max_spread=_env_float("MAX_SPREAD", 0.08),
+            max_spread=_env_float("MAX_SPREAD", 0.06),
+            max_price_impact=_env_float("MAX_PRICE_IMPACT", 0.03),
+            min_bid_price=_env_float("MIN_BID_PRICE", 0.03),
+            taker_fee_rate=_env_float("TAKER_FEE_RATE", 0.01),
             slippage_buffer=_env_float("SLIPPAGE_BUFFER", 0.005),
             negrisk_min_margin=_env_float("NEGRISK_MIN_MARGIN", 0.025),
+            weather_min_days_ahead=_env_int("WEATHER_MIN_DAYS_AHEAD", 1),
             weather_max_days_ahead=_env_int("WEATHER_MAX_DAYS_AHEAD", 3),
             max_events_per_scan=_env_int("MAX_EVENTS_PER_SCAN", 120),
             db_path=resolved_db,

@@ -309,7 +309,7 @@ def scan_weather_markets(
             continue
 
         lead_days = (target_date - ref_date).days
-        if lead_days < 0 or lead_days > config.weather_max_days_ahead:
+        if lead_days < config.weather_min_days_ahead or lead_days > config.weather_max_days_ahead:
             continue
 
         parsed_pairs: list[tuple[MarketOutcome, TempBucket]] = []
@@ -392,10 +392,13 @@ def _evaluate_side(
 
     probe = simulate_buy_fill(
         book=book,
-        target_usd=max(config.min_stake_usd, 15.0),
+        target_usd=max(config.min_stake_usd, 25.0),
         slippage_buffer=config.slippage_buffer,
         max_spread=config.max_spread,
         min_fill_ratio=config.min_fill_ratio,
+        taker_fee_rate=config.taker_fee_rate,
+        max_price_impact=config.max_price_impact,
+        min_bid_price=config.min_bid_price,
     )
     if not probe.executable:
         return
