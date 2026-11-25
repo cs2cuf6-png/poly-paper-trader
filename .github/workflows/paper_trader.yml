@@ -1,0 +1,45 @@
+name: Polymarket Paper Trader
+
+on:
+  schedule:
+    # Запуск каждые 30 минут на бесплатных серверах GitHub Actions
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  paper-trade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run paper-trading cycle (resolve -> scan -> report)
+        env:
+          PYTHONPATH: src
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          INITIAL_BANKROLL: "1000.0"
+          KELLY_FRACTION: "0.25"
+          MIN_EDGE: "0.06"
+        run: |
+          python run.py run --output-md data/REPORT.md
+
+      - name: Commit updated SQLite DB, dashboard and report
+        run: |
+          git config user.name "poly-paper-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/paper_trader.db data/REPORT.md data/dashboard.html
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(paper-trader): update trades and report"
+            git push
+          fi

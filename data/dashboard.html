@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polymarket High-EV Paper Trader</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card: #131a26;
+      --border: #1f2a3c;
+      --text: #e6edf7;
+      --muted: #8b9bb4;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding: 28px 20px 60px;
+    }
+    .container { max-width: 1180px; margin: 0 auto; }
+    .header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      gap: 16px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    h2 { margin: 28px 0 12px; font-size: 16px; font-weight: 600; color: #cbd5e1; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px;
+    }
+    .kpi-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi-val { font-size: 26px; font-weight: 700; margin: 6px 0 4px; }
+    .kpi-sub { font-size: 12px; color: var(--muted); }
+    .pos { color: var(--green); font-weight: 600; }
+    .neg { color: var(--red); font-weight: 600; }
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+    .center { text-align: center; padding: 24px !important; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+    }
+    .badge-green { background: rgba(34,197,94,0.14); color: #4ade80; }
+    .badge-red { background: rgba(239,68,68,0.14); color: #f87171; }
+    .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .badge-amber { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .badge-gray { background: rgba(148,163,184,0.15); color: #cbd5e1; }
+    .badge-dark { background: #1e293b; color: #94a3b8; }
+    .strat-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .strat-title { font-weight: 600; font-size: 15px; }
+    .strat-pnl { font-size: 18px; }
+    .strat-meta { display: flex; justify-content: space-between; margin-top: 12px; font-size: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); background: #0f1520; }
+    tr:last-child td { border-bottom: none; }
+    .q-title { font-weight: 500; max-width: 340px; }
+    code { background: #1e293b; padding: 2px 6px; border-radius: 5px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Polymarket High-EV Paper Trader</h1>
+        <div class="muted small">Weather Ensemble · NegRisk Arbitrage · Science / Chemistry / FDA · Updated 2026-11-25 16:52 UTC</div>
+      </div>
+      <div><span class="badge badge-gray">COLLECTING DATA</span></div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card">
+        <div class="kpi-label">Total Equity</div>
+        <div class="kpi-val">$1,000.00</div>
+        <div class="kpi-sub">Cash: $1,000.00 · Open: $0.00</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Realized PnL</div>
+        <div class="kpi-val ">$+0.00</div>
+        <div class="kpi-sub">ROI: +0.00% · Start: $1,000.00</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Trades & Win Rate</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">0 total (0 open, 0W / 0L)</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Brier Score (Lower = Better)</div>
+        <div class="kpi-val">—</div>
+        <div class="kpi-sub">Closed: 0 / 50+ needed</div>
+      </div>
+    </div>
+
+    <h2>Equity Curve</h2>
+    <div class="card">
+      <div class="muted small" style="padding: 18px 0;">Кривая капитала появится после первых закрытых сделок.</div>
+    </div>
+
+    <h2>Strategies</h2>
+    <div class="grid-3">
+      <div class="card muted">Сделок пока нет. Запустите <code>python run.py run</code> или <code>python run.py demo</code>.</div>
+    </div>
+
+    <h2>Paper Trades</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Strategy</th><th>Market</th><th>Side</th>
+            <th>Fill</th><th>Model</th><th>Edge</th><th>Stake</th><th>Status</th><th>PnL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="10" class="muted center">История сделок пуста</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Recent Scans</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Time (UTC)</th><th>Events</th><th>Signals</th><th>Opened</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="5" class="muted center">Сканирований ещё не было</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
