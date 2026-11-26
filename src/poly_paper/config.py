@@ -56,11 +56,12 @@ class TraderConfig:
     # Storage
     db_path: Path = Path("data/paper_trader.db")
 
-    # Optional free LLM rule-checker
+    # Optional free LLM rule-checker & parallel ensemble
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash-lite"
     nvidia_api_key: str = ""
     nvidia_model: str = "mistralai/mistral-large-4-1t-a52b"
+    nvidia_native_model: str = "nvidia/nemotron-3-ultra-550b-a55b"
     llm_enabled: bool = True
 
     # Early take-profit exit & Telegram alerts
@@ -93,6 +94,7 @@ class TraderConfig:
             gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip(),
             nvidia_api_key=os.getenv("NVIDIA_API_KEY", "").strip(),
             nvidia_model=os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-4-1t-a52b").strip(),
+            nvidia_native_model=os.getenv("NVIDIA_NATIVE_MODEL", "nvidia/nemotron-3-ultra-550b-a55b").strip(),
             llm_enabled=os.getenv("LLM_ENABLED", "1").strip().lower() not in {"0", "false", "no"},
             early_exit_edge_buffer=_env_float("EARLY_EXIT_EDGE_BUFFER", 0.03),
             early_exit_near_certain=_env_float("EARLY_EXIT_NEAR_CERTAIN", 0.96),

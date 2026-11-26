@@ -11,6 +11,7 @@ Why this niche can have real +EV:
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import re
 import urllib.error
@@ -288,14 +289,31 @@ def _extract_json(text: str) -> dict[str, Any] | None:
         return None
 
 
+def _parse_science_response(raw_text: str | None) -> tuple[float, str, str] | None:
+    if not raw_text:
+        return None
+    parsed = _extract_json(raw_text)
+    if not parsed:
+        return None
+    try:
+        raw_prob = float(parsed["fair_prob"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (0.01 <= raw_prob <= 0.99):
+        return None
+    confidence = str(parsed.get("confidence", "low")).lower().strip()
+    reasoning = str(parsed.get("reasoning", "")).strip()
+    return raw_prob, confidence, reasoning
+
+
 def estimate_science_probability_llm(
     market: MarketOutcome,
     evidence: ScientificEvidence,
     market_mid: float,
     config: TraderConfig,
-    timeout: float = 20.0,
+    timeout: float = 35.0,
 ) -> tuple[float, str, str] | None:
-    """Use free Gemini or NVIDIA NIM to estimate calibrated YES probability."""
+    """Run Gemini, Mistral, and NVIDIA Nemotron in parallel and average their probabilities."""
     if not config.llm_enabled or (not config.gemini_api_key and not config.nvidia_api_key):
         return None
 
@@ -310,8 +328,7 @@ def estimate_science_probability_llm(
         "Estimate the true probability of YES resolving to 1.0."
     )
 
-    raw_text: str | None = None
-    if config.gemini_api_key:
+    def _ask_gemini() -> tuple[str, tuple[float, str, str]] | None:
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
             f"{config.gemini_model}:generateContent"
@@ -325,23 +342,21 @@ def estimate_science_probability_llm(
             req = urllib.request.Request(
                 url,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": config.gemini_api_key,
-                },
+                headers={"Content-Type": "application/json", "x-goog-api-key": config.gemini_api_key},
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+            res = _parse_science_response(data["candidates"][0]["content"]["parts"][0]["text"])
+            return (config.gemini_model, res) if res else None
         except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
-            raw_text = None
+            return None
 
-    if raw_text is None and config.nvidia_api_key:
+    def _ask_nvidia(model_name: str) -> tuple[str, tuple[float, str, str]] | None:
         payload = {
-            "model": config.nvidia_model,
+            "model": model_name,
             "temperature": 0.15,
-            "max_tokens": 900,
+            "max_tokens": 1400,
             "messages": [
                 {"role": "system", "content": SUPERFORECASTER_SYSTEM},
                 {"role": "user", "content": user_prompt},
@@ -351,36 +366,47 @@ def estimate_science_probability_llm(
             req = urllib.request.Request(
                 "https://integrate.api.nvidia.com/v1/chat/completions",
                 data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {config.nvidia_api_key}",
-                },
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {config.nvidia_api_key}"},
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             msg = data["choices"][0]["message"]
-            raw_text = msg.get("content") or msg.get("reasoning_content")
+            res = _parse_science_response(msg.get("content") or msg.get("reasoning_content"))
+            return (model_name, res) if res else None
         except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
-            raw_text = None
+            return None
 
-    if not raw_text:
+    callers: list[Any] = []
+    if config.gemini_api_key:
+        callers.append(_ask_gemini)
+    if config.nvidia_api_key:
+        if config.nvidia_model:
+            callers.append(lambda m=config.nvidia_model: _ask_nvidia(m))
+        if config.nvidia_native_model and config.nvidia_native_model != config.nvidia_model:
+            callers.append(lambda m=config.nvidia_native_model: _ask_nvidia(m))
+
+    results: list[tuple[str, tuple[float, str, str]]] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(callers)) as pool:
+        for fut in concurrent.futures.as_completed([pool.submit(fn) for fn in callers]):
+            try:
+                out = fut.result()
+                if out is not None:
+                    results.append(out)
+            except Exception:
+                continue
+
+    if not results:
         return None
 
-    parsed = _extract_json(raw_text)
-    if not parsed:
-        return None
-
-    try:
-        raw_prob = float(parsed["fair_prob"])
-    except (KeyError, TypeError, ValueError):
-        return None
-    if not (0.01 <= raw_prob <= 0.99):
-        return None
-
-    confidence = str(parsed.get("confidence", "low")).lower().strip()
-    reasoning = str(parsed.get("reasoning", "")).strip()
-    return raw_prob, confidence, reasoning
+    avg_prob = sum(r[1][0] for r in results) / len(results)
+    conf_rank = {"low": 0, "medium": 1, "high": 2}
+    best_conf = max((r[1][1] for r in results), key=lambda c: conf_rank.get(c, 0))
+    if len(results) >= 2 and all(r[1][1] == "low" for r in results):
+        best_conf = "low"
+    models_used = "+".join(r[0].split("/")[-1] for r in results)
+    reasons = "; ".join(f"{r[0].split('/')[-1]}:{r[1][2][:70]}" for r in results)
+    return avg_prob, best_conf, f"[{models_used}] {reasons}"
 
 
 def calibrate_with_market_shrinkage(raw_llm_prob: float, market_mid: float, confidence: str) -> float:

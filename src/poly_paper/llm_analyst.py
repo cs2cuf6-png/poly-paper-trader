@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import re
 import urllib.error
@@ -52,9 +53,9 @@ def _build_prompt(signal: TradeSignal) -> str:
 
 
 class LLMAnalyst:
-    """Checks trade signals against resolution rules using free Gemini or NVIDIA APIs."""
+    """Runs Gemini, Mistral, and NVIDIA Nemotron in parallel to audit resolution rules."""
 
-    def __init__(self, config: TraderConfig, timeout: float = 20.0) -> None:
+    def __init__(self, config: TraderConfig, timeout: float = 35.0) -> None:
         self.config = config
         self.timeout = timeout
 
@@ -63,27 +64,51 @@ class LLMAnalyst:
             return LLMVerdict(approved=True, provider="disabled", reason="LLM audit disabled")
 
         prompt = _build_prompt(signal)
-
+        tasks: list[tuple[str, Any]] = []
         if self.config.gemini_api_key:
-            verdict = self._call_gemini(prompt)
-            if verdict is not None:
-                return verdict
-
+            tasks.append(("gemini", lambda: self._call_gemini(prompt)))
         if self.config.nvidia_api_key:
-            verdict = self._call_nvidia(prompt)
-            if verdict is not None:
-                return verdict
+            if self.config.nvidia_model:
+                tasks.append(("mistral", lambda m=self.config.nvidia_model: self._call_nvidia(prompt, m)))
+            if self.config.nvidia_native_model and self.config.nvidia_native_model != self.config.nvidia_model:
+                tasks.append(("nemotron", lambda m=self.config.nvidia_native_model: self._call_nvidia(prompt, m)))
 
-        has_keys = bool(self.config.gemini_api_key or self.config.nvidia_api_key)
-        reason = (
-            "LLM API call failed or rejected key (passed quant checks only)"
-            if has_keys
-            else "No LLM API key configured (passed quant checks only)"
-        )
+        if not tasks:
+            return LLMVerdict(
+                approved=True,
+                provider="none",
+                reason="No LLM API key configured (passed quant checks only)",
+            )
+
+        verdicts: list[LLMVerdict] = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(tasks)) as pool:
+            futures = [pool.submit(fn) for _, fn in tasks]
+            for fut in concurrent.futures.as_completed(futures):
+                try:
+                    res = fut.result()
+                    if res is not None:
+                        verdicts.append(res)
+                except Exception:
+                    continue
+
+        if not verdicts:
+            return LLMVerdict(
+                approved=True,
+                provider="none",
+                reason="LLM API call failed or rejected key (passed quant checks only)",
+            )
+
+        approves = sum(1 for v in verdicts if v.approved)
+        rejects = len(verdicts) - approves
+        approved = approves >= rejects
+        providers = ",".join(v.provider for v in verdicts)
+        flags = tuple(dict.fromkeys(f for v in verdicts for f in v.risk_flags))
+        reasons = " | ".join(f"{v.provider}:{v.reason}" for v in verdicts)
         return LLMVerdict(
-            approved=True,
-            provider="none",
-            reason=reason,
+            approved=approved,
+            provider=f"ensemble[{providers}]",
+            reason=reasons[:240],
+            risk_flags=flags,
         )
 
     def _call_gemini(self, prompt: str) -> LLMVerdict | None:
@@ -124,12 +149,13 @@ class LLMAnalyst:
         except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
             return None
 
-    def _call_nvidia(self, prompt: str) -> LLMVerdict | None:
+    def _call_nvidia(self, prompt: str, model_name: str | None = None) -> LLMVerdict | None:
+        model = model_name or self.config.nvidia_model
         url = "https://integrate.api.nvidia.com/v1/chat/completions"
         payload = {
-            "model": self.config.nvidia_model,
+            "model": model,
             "temperature": 0.1,
-            "max_tokens": 800,
+            "max_tokens": 1400,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
@@ -154,7 +180,7 @@ class LLMAnalyst:
                 return None
             return LLMVerdict(
                 approved=bool(parsed.get("approve", True)),
-                provider=f"nvidia:{self.config.nvidia_model}",
+                provider=f"nvidia:{model}",
                 reason=str(parsed.get("reason", "OK")),
                 risk_flags=tuple(str(x) for x in (parsed.get("risk_flags") or [])),
             )
