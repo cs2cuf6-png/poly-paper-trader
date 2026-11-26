@@ -60,7 +60,7 @@ class TraderConfig:
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.8-flash"
     nvidia_api_key: str = ""
-    nvidia_model: str = "meta/llama-3.3-70b-instruct"
+    nvidia_model: str = "mistralai/mistral-large-4-1t-a52b"
     llm_enabled: bool = True
 
     # Early take-profit exit & Telegram alerts
@@ -92,7 +92,7 @@ class TraderConfig:
             gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
             gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip(),
             nvidia_api_key=os.getenv("NVIDIA_API_KEY", "").strip(),
-            nvidia_model=os.getenv("NVIDIA_MODEL", "meta/llama-3.3-70b-instruct").strip(),
+            nvidia_model=os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-4-1t-a52b").strip(),
             llm_enabled=os.getenv("LLM_ENABLED", "1").strip().lower() not in {"0", "false", "no"},
             early_exit_edge_buffer=_env_float("EARLY_EXIT_EDGE_BUFFER", 0.03),
             early_exit_near_certain=_env_float("EARLY_EXIT_NEAR_CERTAIN", 0.96),

@@ -338,7 +338,7 @@ def estimate_science_probability_llm(
         payload = {
             "model": config.nvidia_model,
             "temperature": 0.15,
-            "max_tokens": 350,
+            "max_tokens": 900,
             "messages": [
                 {"role": "system", "content": SUPERFORECASTER_SYSTEM},
                 {"role": "user", "content": user_prompt},
@@ -356,7 +356,8 @@ def estimate_science_probability_llm(
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            raw_text = data["choices"][0]["message"]["content"]
+            msg = data["choices"][0]["message"]
+            raw_text = msg.get("content") or msg.get("reasoning_content")
         except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
             raw_text = None
 

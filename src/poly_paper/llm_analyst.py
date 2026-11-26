@@ -126,7 +126,7 @@ class LLMAnalyst:
         payload = {
             "model": self.config.nvidia_model,
             "temperature": 0.1,
-            "max_tokens": 300,
+            "max_tokens": 800,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
@@ -144,7 +144,8 @@ class LLMAnalyst:
             )
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            text = data["choices"][0]["message"]["content"]
+            msg = data["choices"][0]["message"]
+            text = msg.get("content") or msg.get("reasoning_content") or ""
             parsed = _extract_json_object(text)
             if not parsed:
                 return None

@@ -240,7 +240,7 @@ def cmd_setup() -> None:
     env_content = (
         f"GEMINI_API_KEY={gemini}\n"
         f"NVIDIA_API_KEY={nvidia}\n"
-        "NVIDIA_MODEL=meta/llama-3.3-70b-instruct\n"
+        "NVIDIA_MODEL=mistralai/mistral-large-4-1t-a52b\n"
         f"INITIAL_BANKROLL={bankroll}\n"
         "KELLY_FRACTION=0.25\n"
         "MIN_EDGE=0.06\n"
