@@ -89,7 +89,7 @@ class LLMAnalyst:
     def _call_gemini(self, prompt: str) -> LLMVerdict | None:
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.config.gemini_model}:generateContent?key={self.config.gemini_api_key}"
+            f"{self.config.gemini_model}:generateContent"
         )
         payload = {
             "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
@@ -103,7 +103,10 @@ class LLMAnalyst:
             req = urllib.request.Request(
                 url,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self.config.gemini_api_key,
+                },
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:

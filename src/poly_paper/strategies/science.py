@@ -314,7 +314,7 @@ def estimate_science_probability_llm(
     if config.gemini_api_key:
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{config.gemini_model}:generateContent?key={config.gemini_api_key}"
+            f"{config.gemini_model}:generateContent"
         )
         payload = {
             "system_instruction": {"parts": [{"text": SUPERFORECASTER_SYSTEM}]},
@@ -325,7 +325,10 @@ def estimate_science_probability_llm(
             req = urllib.request.Request(
                 url,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": config.gemini_api_key,
+                },
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:

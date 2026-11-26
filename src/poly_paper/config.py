@@ -58,7 +58,7 @@ class TraderConfig:
 
     # Optional free LLM rule-checker
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     nvidia_api_key: str = ""
     nvidia_model: str = "mistralai/mistral-large-4-1t-a52b"
     llm_enabled: bool = True
@@ -90,7 +90,7 @@ class TraderConfig:
             max_events_per_scan=_env_int("MAX_EVENTS_PER_SCAN", 120),
             db_path=resolved_db,
             gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
-            gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip(),
+            gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip(),
             nvidia_api_key=os.getenv("NVIDIA_API_KEY", "").strip(),
             nvidia_model=os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-4-1t-a52b").strip(),
             llm_enabled=os.getenv("LLM_ENABLED", "1").strip().lower() not in {"0", "false", "no"},
