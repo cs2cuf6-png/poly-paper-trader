@@ -12,6 +12,7 @@ from poly_paper.dashboard import render_dashboard_html
 from poly_paper.engine import PaperTradingEngine, fractional_kelly_stake
 from poly_paper.models import EventBundle, MarketOutcome, OrderBook, OrderLevel, TradeSignal
 from poly_paper.polymarket import PolymarketClient, parse_market, simulate_buy_fill, simulate_sell_fill
+from poly_paper.strategies.crypto import lognormal_touch_prob, parse_crypto_target
 from poly_paper.strategies.negrisk_arb import scan_negrisk_arbitrage
 from poly_paper.strategies.science import (
     ScientificEvidence,
@@ -276,6 +277,31 @@ class TestPaperEngineAndBrier(unittest.TestCase):
             self.assertEqual(picks[0]["stake_usd"], 100.0)
             self.assertEqual(picks[0]["snapshot_count"], 2)
             self.assertGreater(picks[0]["unrealized_pnl"], 0.0)
+
+    def test_top15_category_cap_and_crypto_model(self) -> None:
+        parsed = parse_crypto_target("Will Bitcoin be above $100k on December 31?")
+        self.assertEqual(parsed, ("BTC", 100000.0, "above"))
+        p = lognormal_touch_prob(spot=95000.0, strike=100000.0, days_ahead=14.0, vol_annual=0.55, direction="above")
+        self.assertTrue(0.15 < p < 0.55)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = TraderConfig(db_path=Path(tmp) / "top15.db", llm_enabled=False, slippage_buffer=0.005)
+            engine = PaperTradingEngine(cfg)
+            book = OrderBook("tok", (OrderLevel(0.40, 500),), (OrderLevel(0.42, 500),))
+            # 4 weather signals + 1 crypto signal -> weather capped at 3, crypto gets 1
+            sigs = [
+                TradeSignal("weather_ensemble", f"ev{i}", f"m{i}", f"tok{i}", f"W{i}?", "50F", "YES", 0.80, 0.41, 0.35 - i * 0.01)
+                for i in range(4)
+            ] + [
+                TradeSignal("crypto_lognormal", "evc", "mc", "tokc", "BTC > 100k?", "Yes", "YES", 0.70, 0.41, 0.25)
+            ]
+            books = {s.token_id: book for s in sigs}
+            stats = engine.update_top10_portfolio(sigs, _StubClient(books=books), stake_per_market=100.0, max_slots=15, max_per_category=3)
+            self.assertEqual(stats["opened"], 4)
+            picks = engine.list_top10()
+            cats = [p["category"] for p in picks]
+            self.assertEqual(cats.count("weather"), 3)
+            self.assertEqual(cats.count("crypto"), 1)
 
 
 class TestScienceStrategy(unittest.TestCase):

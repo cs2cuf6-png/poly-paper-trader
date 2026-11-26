@@ -16,7 +16,7 @@ from .llm_analyst import LLMAnalyst
 from .models import EventBundle, MarketOutcome, OrderBook, OrderLevel
 from .notifier import TelegramNotifier
 from .polymarket import PolymarketClient
-from .strategies import scan_negrisk_arbitrage, scan_science_markets, scan_weather_markets
+from .strategies import scan_crypto_markets, scan_negrisk_arbitrage, scan_science_markets, scan_weather_markets
 from .strategies.science import gather_scientific_evidence, is_science_event
 
 _USE_COLOR = sys.stdout.isatty() and not os.getenv("NO_COLOR")
@@ -180,29 +180,38 @@ def cmd_run(config: TraderConfig, output_md: str | None = None, top10_md: str | 
 
     print(_c("⏳ Загружаю активные рынки Polymarket...", "36"))
     weather_events = client.fetch_active_events(limit=60, tag_slug="weather")
+    crypto_events = client.fetch_active_events(limit=60, tag_slug="crypto")
     science_events = client.fetch_active_events(limit=40, tag_slug="science")
     general_events = client.fetch_active_events(limit=config.max_events_per_scan)
-    all_events = _dedupe_events(weather_events + science_events + general_events)
+    all_events = _dedupe_events(weather_events + crypto_events + science_events + general_events)
 
     weather_signals = scan_weather_markets(client, all_events, config)
+    crypto_signals = scan_crypto_markets(client, all_events, config)
     arb_signals = scan_negrisk_arbitrage(client, all_events, config)
     science_signals = scan_science_markets(client, all_events, config)
-    all_signals = weather_signals + arb_signals + science_signals
+    all_signals = weather_signals + crypto_signals + arb_signals + science_signals
 
-    top10_stats = engine.update_top10_portfolio(all_signals, client, stake_per_market=100.0, max_slots=10)
+    top15_stats = engine.update_top10_portfolio(
+        all_signals, client, stake_per_market=100.0, max_slots=15, max_per_category=3
+    )
     opened = engine.execute_signals(all_signals, client, analyst=analyst)
     engine.log_scan_run(
         events_scanned=len(all_events),
         signals_found=len(all_signals),
         trades_opened=len(opened),
         resolved_count=len(closed),
-        notes=f"weather={len(weather_signals)}, negrisk={len(arb_signals)}, science={len(science_signals)}",
+        notes=(
+            f"weather={len(weather_signals)}, crypto={len(crypto_signals)}, "
+            f"negrisk={len(arb_signals)}, science={len(science_signals)}"
+        ),
     )
     print(
         f"Событий: {_c(str(len(all_events)), '1')} | "
-        f"Сигналов: {_c(str(len(all_signals)), '33')} | "
+        f"Сигналов: {_c(str(len(all_signals)), '33')} "
+        f"(weather={len(weather_signals)}, crypto={len(crypto_signals)}, "
+        f"negrisk={len(arb_signals)}, science={len(science_signals)}) | "
         f"Открыто: {_c(str(len(opened)), '1;32')} | "
-        f"Top-10 ($100): +{top10_stats['opened']} откр., {top10_stats['updated']} обновл., {top10_stats['resolved']} закр."
+        f"Top-15 ($100): +{top15_stats['opened']} откр., {top15_stats['updated']} обновл., {top15_stats['resolved']} закр."
     )
 
     cmd_report(config, output_md=output_md)

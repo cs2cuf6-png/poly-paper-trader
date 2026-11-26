@@ -299,7 +299,7 @@ def render_dashboard_html(engine: PaperTradingEngine) -> str:
       {equity_svg}
     </div>
 
-    <h2>Top 10 High-Conviction Markets ($100 / Market)</h2>
+    <h2>Top 15 Markets Across Top 5 Categories ($100 / Market)</h2>
     <div class="table-wrap">
       <table>
         <thead>

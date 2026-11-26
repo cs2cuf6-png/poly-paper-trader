@@ -109,6 +109,7 @@ class PaperTradingEngine:
 
                 CREATE TABLE IF NOT EXISTS top10_picks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    category TEXT NOT NULL DEFAULT 'weather',
                     strategy TEXT NOT NULL,
                     event_id TEXT NOT NULL,
                     market_id TEXT NOT NULL,
@@ -144,6 +145,9 @@ class PaperTradingEngine:
                 );
                 """
             )
+            cols = {r["name"] for r in conn.execute("PRAGMA table_info(top10_picks)").fetchall()}
+            if "category" not in cols:
+                conn.execute("ALTER TABLE top10_picks ADD COLUMN category TEXT NOT NULL DEFAULT 'weather'")
             row = conn.execute("SELECT id FROM portfolio_state WHERE id = 1").fetchone()
             if row is None:
                 conn.execute(
@@ -486,14 +490,27 @@ class PaperTradingEngine:
                 (bankroll, bankroll, utc_now_iso()),
             )
 
+    @staticmethod
+    def strategy_to_category(strategy: str) -> str:
+        mapping = {
+            "weather_ensemble": "weather",
+            "crypto_lognormal": "crypto",
+            "science_research": "science",
+            "economics_research": "economics",
+            "tech_research": "tech",
+            "negrisk_arb": "arbitrage",
+        }
+        return mapping.get(strategy, strategy)
+
     def update_top10_portfolio(
         self,
         signals: list[TradeSignal],
         client: PolymarketClient,
         stake_per_market: float = 100.0,
-        max_slots: int = 10,
+        max_slots: int = 15,
+        max_per_category: int = 3,
     ) -> dict[str, int]:
-        """Maintain a separate Top-10 ($100/market) portfolio with time-series snapshots."""
+        """Maintain a separate Top-15 ($100/market) portfolio diversified across Top-5 categories."""
         now = utc_now_iso()
         resolved_count = 0
         updated_count = 0
@@ -550,9 +567,13 @@ class PaperTradingEngine:
             updated_count += 1
 
         with self._connect() as conn:
-            active_rows = conn.execute("SELECT market_id FROM top10_picks WHERE status = 'OPEN'").fetchall()
+            active_rows = conn.execute("SELECT market_id, category FROM top10_picks WHERE status = 'OPEN'").fetchall()
             open_market_ids = {str(r["market_id"]) for r in active_rows}
             open_slots_used = len(open_market_ids)
+            cat_counts: dict[str, int] = {}
+            for r in active_rows:
+                cat = str(r["category"] or "weather")
+                cat_counts[cat] = cat_counts.get(cat, 0) + 1
 
         opened_count = 0
         ranked = sorted(signals, key=lambda s: s.expected_edge, reverse=True)
@@ -560,6 +581,9 @@ class PaperTradingEngine:
             if open_slots_used >= max_slots:
                 break
             if sig.market_id in open_market_ids or sig.strategy == "negrisk_arb":
+                continue
+            cat = self.strategy_to_category(sig.strategy)
+            if cat_counts.get(cat, 0) >= max_per_category:
                 continue
 
             try:
@@ -592,13 +616,13 @@ class PaperTradingEngine:
                 cur = conn.execute(
                     """
                     INSERT INTO top10_picks (
-                        strategy, event_id, market_id, token_id, question, outcome_label, side,
+                        category, strategy, event_id, market_id, token_id, question, outcome_label, side,
                         model_prob, entry_price, shares, stake_usd, expected_edge,
                         current_mid, current_bid, unrealized_pnl, opened_at, last_updated, status, notes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
                     """,
                     (
-                        sig.strategy, sig.event_id, sig.market_id, sig.token_id, sig.question,
+                        cat, sig.strategy, sig.event_id, sig.market_id, sig.token_id, sig.question,
                         sig.outcome_label, sig.side, sig.model_prob, sim.effective_price,
                         shares, stake_per_market, real_edge, sim.mid_price, sim.best_bid,
                         unrealized, now, now, sig.notes,
@@ -613,6 +637,7 @@ class PaperTradingEngine:
                     (pick_id, now, sim.mid_price, sim.best_bid, sim.best_ask, unrealized),
                 )
             open_market_ids.add(sig.market_id)
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
             open_slots_used += 1
             opened_count += 1
 
@@ -639,21 +664,46 @@ class PaperTradingEngine:
         total_unrealized = sum(float(p["unrealized_pnl"] or 0.0) for p in open_picks)
         total_realized = sum(float(p["pnl_usd"] or 0.0) for p in closed_picks)
 
+        by_cat: dict[str, list[dict[str, Any]]] = {}
+        for p in picks:
+            cat = str(p.get("category") or self.strategy_to_category(str(p["strategy"])))
+            by_cat.setdefault(cat, []).append(p)
+
         lines = [
-            "# Top 10 High-Conviction Markets ($100 / Market)",
+            "# Top 15 High-Conviction Markets Across Top 5 Categories ($100 / Market)",
             "",
-            f"- Active Slots: **{len(open_picks)} / 10** (${len(open_picks) * 100:,.2f} deployed)",
+            f"- Active Slots: **{len(open_picks)} / 15** (${len(open_picks) * 100:,.2f} deployed, max 3 per category)",
             f"- Open Unrealized PnL: **${total_unrealized:+,.2f}**",
             f"- Closed Realized PnL: **${total_realized:+,.2f}** ({len(closed_picks)} settled)",
             "",
-            "| # | Status | Strategy | Side | Market | Entry | Now (Bid) | Model | Edge | PnL ($100) | Snapshots |",
-            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|",
+            "## Top 5 Categories Breakdown",
+            "",
+            "| Category | Open / 3 | Closed | Unrealized PnL | Realized PnL |",
+            "|---|---:|---:|---:|---:|",
         ]
+        for cat in ("weather", "crypto", "science", "economics", "tech"):
+            c_picks = by_cat.get(cat, [])
+            c_open = [p for p in c_picks if p["status"] == "OPEN"]
+            c_closed = [p for p in c_picks if p["status"] == "CLOSED"]
+            c_unr = sum(float(p["unrealized_pnl"] or 0.0) for p in c_open)
+            c_real = sum(float(p["pnl_usd"] or 0.0) for p in c_closed)
+            lines.append(f"| `{cat}` | {len(c_open)} / 3 | {len(c_closed)} | ${c_unr:+.2f} | ${c_real:+.2f} |")
+
+        lines.extend(
+            [
+                "",
+                "## Tracked Markets ($100 Each)",
+                "",
+                "| # | Status | Category | Side | Market | Entry | Now (Bid) | Model | Edge | PnL ($100) | Snapshots |",
+                "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
         for idx, p in enumerate(picks, start=1):
+            cat = str(p.get("category") or self.strategy_to_category(str(p["strategy"])))
             bid_str = f"${float(p['current_bid']):.3f}" if p["current_bid"] is not None else "—"
             pnl_val = float(p["pnl_usd"]) if p["status"] == "CLOSED" and p["pnl_usd"] is not None else float(p["unrealized_pnl"] or 0.0)
             lines.append(
-                f"| {idx} | {p['status']} | `{p['strategy']}` | **{p['side']}** | "
+                f"| {idx} | {p['status']} | `{cat}` | **{p['side']}** | "
                 f"{p['question']} ({p['outcome_label']}) | ${float(p['entry_price']):.3f} | {bid_str} | "
                 f"{float(p['model_prob']) * 100:.1f}% | +{float(p['expected_edge']) * 100:.1f}% | "
                 f"${pnl_val:+.2f} | {p['snapshot_count']} |"
@@ -671,7 +721,8 @@ class PaperTradingEngine:
         cash_usd = float(state["cash_usd"]) if state else self.config.initial_bankroll
 
         open_rows = [r for r in rows if r["status"] == "OPEN"]
-        closed_rows = [r for r in rows if r["status"] == "CLOSED" and r["resolved_outcome"] is not None]
+        closed_rows = [r for r in rows if r["status"] == "CLOSED"]
+        resolved_rows = [r for r in closed_rows if r["resolved_outcome"] is not None]
 
         open_exposure = sum(float(r["stake_usd"]) for r in open_rows)
         realized_pnl = sum(float(r["pnl_usd"] or 0.0) for r in closed_rows)
@@ -682,13 +733,13 @@ class PaperTradingEngine:
         bot_brier = None
         market_brier = None
         bss = None
-        if closed_rows:
+        if resolved_rows:
             bot_brier = sum(
-                (float(r["model_prob"]) - float(r["resolved_outcome"])) ** 2 for r in closed_rows
-            ) / len(closed_rows)
+                (float(r["model_prob"]) - float(r["resolved_outcome"])) ** 2 for r in resolved_rows
+            ) / len(resolved_rows)
             market_brier = sum(
-                (float(r["market_mid"]) - float(r["resolved_outcome"])) ** 2 for r in closed_rows
-            ) / len(closed_rows)
+                (float(r["market_mid"]) - float(r["resolved_outcome"])) ** 2 for r in resolved_rows
+            ) / len(resolved_rows)
             if market_brier > 1e-12:
                 bss = 1.0 - (bot_brier / market_brier)
 
@@ -696,15 +747,16 @@ class PaperTradingEngine:
         for strat in sorted({str(r["strategy"]) for r in rows}):
             s_all = [r for r in rows if r["strategy"] == strat]
             s_closed = [r for r in closed_rows if r["strategy"] == strat]
+            s_resolved = [r for r in resolved_rows if r["strategy"] == strat]
             s_pnl = sum(float(r["pnl_usd"] or 0.0) for r in s_closed)
             s_bot_brier = (
-                sum((float(r["model_prob"]) - float(r["resolved_outcome"])) ** 2 for r in s_closed) / len(s_closed)
-                if s_closed
+                sum((float(r["model_prob"]) - float(r["resolved_outcome"])) ** 2 for r in s_resolved) / len(s_resolved)
+                if s_resolved
                 else None
             )
             s_mkt_brier = (
-                sum((float(r["market_mid"]) - float(r["resolved_outcome"])) ** 2 for r in s_closed) / len(s_closed)
-                if s_closed
+                sum((float(r["market_mid"]) - float(r["resolved_outcome"])) ** 2 for r in s_resolved) / len(s_resolved)
+                if s_resolved
                 else None
             )
             by_strategy[strat] = {

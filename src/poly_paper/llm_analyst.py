@@ -74,10 +74,16 @@ class LLMAnalyst:
             if verdict is not None:
                 return verdict
 
+        has_keys = bool(self.config.gemini_api_key or self.config.nvidia_api_key)
+        reason = (
+            "LLM API call failed or rejected key (passed quant checks only)"
+            if has_keys
+            else "No LLM API key configured (passed quant checks only)"
+        )
         return LLMVerdict(
             approved=True,
             provider="none",
-            reason="No LLM API key configured (passed quant checks only)",
+            reason=reason,
         )
 
     def _call_gemini(self, prompt: str) -> LLMVerdict | None:
