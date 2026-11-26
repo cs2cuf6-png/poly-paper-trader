@@ -72,6 +72,8 @@ class LLMAnalyst:
                 tasks.append(("mistral", lambda m=self.config.nvidia_model: self._call_nvidia(prompt, m)))
             if self.config.nvidia_native_model and self.config.nvidia_native_model != self.config.nvidia_model:
                 tasks.append(("nemotron", lambda m=self.config.nvidia_native_model: self._call_nvidia(prompt, m)))
+        if self.config.groq_api_key:
+            tasks.append(("groq", lambda: self._call_groq(prompt)))
 
         if not tasks:
             return LLMVerdict(
@@ -149,6 +151,44 @@ class LLMAnalyst:
         except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
             return None
 
+    def _call_groq(self, prompt: str) -> LLMVerdict | None:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        payload = {
+            "model": self.config.groq_model,
+            "temperature": 0.1,
+            "max_tokens": 900,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.config.groq_api_key}",
+                    "User-Agent": "poly-paper-trader/0.1",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            msg = data["choices"][0]["message"]
+            text = msg.get("content") or msg.get("reasoning_content") or ""
+            parsed = _extract_json_object(text)
+            if not parsed:
+                return None
+            return LLMVerdict(
+                approved=bool(parsed.get("approve", True)),
+                provider=f"groq:{self.config.groq_model}",
+                reason=str(parsed.get("reason", "OK")),
+                risk_flags=tuple(str(x) for x in (parsed.get("risk_flags") or [])),
+            )
+        except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
+            return None
+
     def _call_nvidia(self, prompt: str, model_name: str | None = None) -> LLMVerdict | None:
         model = model_name or self.config.nvidia_model
         url = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -181,6 +221,44 @@ class LLMAnalyst:
             return LLMVerdict(
                 approved=bool(parsed.get("approve", True)),
                 provider=f"nvidia:{model}",
+                reason=str(parsed.get("reason", "OK")),
+                risk_flags=tuple(str(x) for x in (parsed.get("risk_flags") or [])),
+            )
+        except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
+            return None
+
+    def _call_groq(self, prompt: str) -> LLMVerdict | None:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        payload = {
+            "model": self.config.groq_model,
+            "temperature": 0.1,
+            "max_tokens": 900,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.config.groq_api_key}",
+                    "User-Agent": "poly-paper-trader/0.1",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            msg = data["choices"][0]["message"]
+            text = msg.get("content") or msg.get("reasoning_content") or ""
+            parsed = _extract_json_object(text)
+            if not parsed:
+                return None
+            return LLMVerdict(
+                approved=bool(parsed.get("approve", True)),
+                provider=f"groq:{self.config.groq_model}",
                 reason=str(parsed.get("reason", "OK")),
                 risk_flags=tuple(str(x) for x in (parsed.get("risk_flags") or [])),
             )

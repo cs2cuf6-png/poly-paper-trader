@@ -314,7 +314,7 @@ def estimate_science_probability_llm(
     timeout: float = 35.0,
 ) -> tuple[float, str, str] | None:
     """Run Gemini, Mistral, and NVIDIA Nemotron in parallel and average their probabilities."""
-    if not config.llm_enabled or (not config.gemini_api_key and not config.nvidia_api_key):
+    if not config.llm_enabled or (not config.gemini_api_key and not config.nvidia_api_key and not config.groq_api_key):
         return None
 
     user_prompt = (
@@ -377,6 +377,35 @@ def estimate_science_probability_llm(
         except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
             return None
 
+    def _ask_groq() -> tuple[str, tuple[float, str, str]] | None:
+        payload = {
+            "model": config.groq_model,
+            "temperature": 0.15,
+            "max_tokens": 900,
+            "messages": [
+                {"role": "system", "content": SUPERFORECASTER_SYSTEM},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        try:
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {config.groq_api_key}",
+                    "User-Agent": "poly-paper-trader/0.1",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            msg = data["choices"][0]["message"]
+            res = _parse_science_response(msg.get("content") or msg.get("reasoning_content"))
+            return (config.groq_model, res) if res else None
+        except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, TimeoutError):
+            return None
+
     callers: list[Any] = []
     if config.gemini_api_key:
         callers.append(_ask_gemini)
@@ -385,6 +414,8 @@ def estimate_science_probability_llm(
             callers.append(lambda m=config.nvidia_model: _ask_nvidia(m))
         if config.nvidia_native_model and config.nvidia_native_model != config.nvidia_model:
             callers.append(lambda m=config.nvidia_native_model: _ask_nvidia(m))
+    if config.groq_api_key:
+        callers.append(_ask_groq)
 
     results: list[tuple[str, tuple[float, str, str]]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(callers)) as pool:

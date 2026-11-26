@@ -62,6 +62,8 @@ class TraderConfig:
     nvidia_api_key: str = ""
     nvidia_model: str = "mistralai/mistral-large-4-1t-a52b"
     nvidia_native_model: str = "nvidia/nemotron-3-ultra-550b-a55b"
+    groq_api_key: str = ""
+    groq_model: str = "qwen/qwen3.8-27b"
     llm_enabled: bool = True
 
     # Early take-profit exit & Telegram alerts
@@ -95,6 +97,8 @@ class TraderConfig:
             nvidia_api_key=os.getenv("NVIDIA_API_KEY", "").strip(),
             nvidia_model=os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-4-1t-a52b").strip(),
             nvidia_native_model=os.getenv("NVIDIA_NATIVE_MODEL", "nvidia/nemotron-3-ultra-550b-a55b").strip(),
+            groq_api_key=os.getenv("GROQ_API_KEY", "").strip(),
+            groq_model=os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b").strip(),
             llm_enabled=os.getenv("LLM_ENABLED", "1").strip().lower() not in {"0", "false", "no"},
             early_exit_edge_buffer=_env_float("EARLY_EXIT_EDGE_BUFFER", 0.03),
             early_exit_near_certain=_env_float("EARLY_EXIT_NEAR_CERTAIN", 0.96),
