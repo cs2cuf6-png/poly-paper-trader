@@ -1,16 +1,16 @@
 # Top 15 High-Conviction Markets Across Top 5 Categories ($100 / Market)
 
 - Active Slots: **9 / 15** ($900.00 deployed, max 3 per category)
-- Open Unrealized PnL: **$-265.10**
+- Open Unrealized PnL: **$-236.43**
 - Closed Realized PnL: **$-47.31** (10 settled)
 
 ## Top 5 Categories Breakdown
 
 | Category | Open / 3 | Closed | Unrealized PnL | Realized PnL |
 |---|---:|---:|---:|---:|
-| `weather` | 3 / 3 | 8 | $-40.35 | $+152.69 |
-| `crypto` | 3 / 3 | 2 | $-91.31 | $-200.00 |
-| `science` | 3 / 3 | 0 | $-133.44 | $+0.00 |
+| `weather` | 3 / 3 | 8 | $-43.52 | $+152.69 |
+| `crypto` | 3 / 3 | 2 | $-57.89 | $-200.00 |
+| `science` | 3 / 3 | 0 | $-135.01 | $+0.00 |
 | `economics` | 0 / 3 | 0 | $+0.00 | $+0.00 |
 | `tech` | 0 / 3 | 0 | $+0.00 | $+0.00 |
 
@@ -18,15 +18,15 @@
 
 | # | Status | Category | Side | Market | Entry | Now (Bid) | Model | Edge | PnL ($100) | Snapshots |
 |---|---|---|---|---|---:|---:|---:|---:|---:|---:|
-| 1 | OPEN | `weather` | **NO** | Will the highest temperature in Dallas be between 72-73°F on November 28? (72-73°F) | $0.631 | $0.560 | 96.7% | +33.5% | $-11.28 | 8 |
-| 2 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 November 23-29? (↑ 1.00) | $0.337 | $0.350 | 64.5% | +30.8% | $+3.87 | 5 |
-| 3 | OPEN | `crypto` | **NO** | Will Bitcoin reach $62,500 in November? (↑ 62,500) | $0.448 | $0.260 | 70.8% | +26.0% | $-41.96 | 32 |
-| 4 | OPEN | `weather` | **NO** | Will the highest temperature in Seoul (Incheon) be 16°C on November 27? (16°C) | $0.712 | — | 89.5% | +18.3% | $-99.86 | 46 |
-| 5 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 in November? (↑ 1.00) | $0.599 | $0.280 | 76.4% | +16.6% | $-53.22 | 20 |
-| 6 | OPEN | `science` | **NO** | Will there be at least 7500 measles cases in the U.S. in 2026? (↑7.5k) | $0.379 | $0.250 | 49.9% | +12.0% | $-33.98 | 28 |
-| 7 | OPEN | `science` | **NO** | Will there be at least 7000 measles cases in the U.S. in 2026? (↑7k) | $0.127 | $0.027 | 24.7% | +12.0% | $-78.71 | 13 |
-| 8 | OPEN | `weather` | **NO** | Will the highest temperature in Seoul (Incheon) be 15°C on November 27? (15°C) | $0.585 | $0.999 | 69.8% | +11.3% | $+70.79 | 46 |
-| 9 | OPEN | `science` | **YES** | Skin cancer vaccine FDA approved by June 30, 2027? (June 30, 2027) | $0.076 | $0.060 | 13.6% | +6.1% | $-20.74 | 12 |
+| 1 | OPEN | `weather` | **NO** | Will the highest temperature in Dallas be between 72-73°F on November 28? (72-73°F) | $0.631 | $0.540 | 96.7% | +33.5% | $-14.45 | 9 |
+| 2 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 November 23-29? (↑ 1.00) | $0.337 | $0.410 | 64.5% | +30.8% | $+21.67 | 6 |
+| 3 | OPEN | `crypto` | **NO** | Will Bitcoin reach $62,500 in November? (↑ 62,500) | $0.448 | $0.300 | 70.8% | +26.0% | $-33.03 | 33 |
+| 4 | OPEN | `weather` | **NO** | Will the highest temperature in Seoul (Incheon) be 16°C on November 27? (16°C) | $0.712 | — | 89.5% | +18.3% | $-99.86 | 47 |
+| 5 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 in November? (↑ 1.00) | $0.599 | $0.320 | 76.4% | +16.6% | $-46.54 | 21 |
+| 6 | OPEN | `science` | **NO** | Will there be at least 7500 measles cases in the U.S. in 2026? (↑7.5k) | $0.379 | $0.250 | 49.9% | +12.0% | $-33.98 | 29 |
+| 7 | OPEN | `science` | **NO** | Will there be at least 7000 measles cases in the U.S. in 2026? (↑7k) | $0.127 | $0.025 | 24.7% | +12.0% | $-80.29 | 14 |
+| 8 | OPEN | `weather` | **NO** | Will the highest temperature in Seoul (Incheon) be 15°C on November 27? (15°C) | $0.585 | $0.999 | 69.8% | +11.3% | $+70.79 | 47 |
+| 9 | OPEN | `science` | **YES** | Skin cancer vaccine FDA approved by June 30, 2027? (June 30, 2027) | $0.076 | $0.060 | 13.6% | +6.1% | $-20.74 | 13 |
 | 10 | CLOSED | `weather` | **NO** | Will the highest temperature in Seoul (Incheon) be 15°C on November 26? (15°C) | $0.437 | — | 84.4% | +40.7% | $-100.00 | 26 |
 | 11 | CLOSED | `crypto` | **NO** | Will Bitcoin reach $62,000 November 23-29? (↑ 62,000) | $0.408 | — | 67.9% | +27.0% | $-100.00 | 27 |
 | 12 | CLOSED | `crypto` | **NO** | Will Bitcoin dip to $60,000 on November 26? (↓ 60,000) | $0.338 | $0.540 | 60.4% | +26.6% | $-100.00 | 12 |
