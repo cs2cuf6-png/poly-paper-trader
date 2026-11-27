@@ -1,16 +1,16 @@
 # Top 15 High-Conviction Markets Across Top 5 Categories ($100 / Market)
 
 - Active Slots: **9 / 15** ($900.00 deployed, max 3 per category)
-- Open Unrealized PnL: **$-78.89**
+- Open Unrealized PnL: **$-37.07**
 - Closed Realized PnL: **$-76.36** (12 settled)
 
 ## Top 5 Categories Breakdown
 
 | Category | Open / 3 | Closed | Unrealized PnL | Realized PnL |
 |---|---:|---:|---:|---:|
-| `weather` | 3 / 3 | 10 | $-80.31 | $+123.64 |
-| `crypto` | 3 / 3 | 2 | $+140.88 | $-200.00 |
-| `science` | 3 / 3 | 0 | $-139.47 | $+0.00 |
+| `weather` | 3 / 3 | 10 | $-61.04 | $+123.64 |
+| `crypto` | 3 / 3 | 2 | $+165.02 | $-200.00 |
+| `science` | 3 / 3 | 0 | $-141.05 | $+0.00 |
 | `economics` | 0 / 3 | 0 | $+0.00 | $+0.00 |
 | `tech` | 0 / 3 | 0 | $+0.00 | $+0.00 |
 
@@ -18,15 +18,15 @@
 
 | # | Status | Category | Side | Market | Entry | Now (Bid) | Model | Edge | PnL ($100) | Snapshots |
 |---|---|---|---|---|---:|---:|---:|---:|---:|---:|
-| 1 | OPEN | `weather` | **NO** | Will the highest temperature in Dallas be between 72-73°F on November 28? (72-73°F) | $0.631 | $0.520 | 96.7% | +33.5% | $-17.62 | 15 |
-| 2 | OPEN | `weather` | **NO** | Will the highest temperature in Paris be 5°C on November 28? (5°C) | $0.495 | $0.440 | 81.5% | +31.9% | $-11.17 | 5 |
-| 3 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 November 23-29? (↑ 1.00) | $0.337 | $0.640 | 64.5% | +30.8% | $+89.93 | 12 |
-| 4 | OPEN | `crypto` | **NO** | Will Bitcoin reach $62,500 in November? (↑ 62,500) | $0.448 | $0.720 | 70.8% | +26.0% | $+60.74 | 39 |
-| 5 | OPEN | `weather` | **YES** | Will the highest temperature in Paris be 4°C on November 28? (4°C) | $0.256 | $0.124 | 43.0% | +17.4% | $-51.52 | 5 |
-| 6 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 in November? (↑ 1.00) | $0.599 | $0.540 | 76.4% | +16.6% | $-9.78 | 27 |
-| 7 | OPEN | `science` | **NO** | Will there be at least 7500 measles cases in the U.S. in 2026? (↑7.5k) | $0.379 | $0.260 | 49.9% | +12.0% | $-31.34 | 35 |
-| 8 | OPEN | `science` | **NO** | Will there be at least 7000 measles cases in the U.S. in 2026? (↑7k) | $0.127 | $0.016 | 24.7% | +12.0% | $-87.39 | 20 |
-| 9 | OPEN | `science` | **YES** | Skin cancer vaccine FDA approved by June 30, 2027? (June 30, 2027) | $0.076 | $0.060 | 13.6% | +6.1% | $-20.74 | 19 |
+| 1 | OPEN | `weather` | **NO** | Will the highest temperature in Dallas be between 72-73°F on November 28? (72-73°F) | $0.631 | $0.540 | 96.7% | +33.5% | $-14.45 | 16 |
+| 2 | OPEN | `weather` | **NO** | Will the highest temperature in Paris be 5°C on November 28? (5°C) | $0.495 | $0.450 | 81.5% | +31.9% | $-9.16 | 6 |
+| 3 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 November 23-29? (↑ 1.00) | $0.337 | $0.680 | 64.5% | +30.8% | $+101.80 | 13 |
+| 4 | OPEN | `crypto` | **NO** | Will Bitcoin reach $62,500 in November? (↑ 62,500) | $0.448 | $0.760 | 70.8% | +26.0% | $+69.67 | 40 |
+| 5 | OPEN | `weather` | **YES** | Will the highest temperature in Paris be 4°C on November 28? (4°C) | $0.256 | $0.160 | 43.0% | +17.4% | $-37.44 | 6 |
+| 6 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 in November? (↑ 1.00) | $0.599 | $0.560 | 76.4% | +16.6% | $-6.44 | 28 |
+| 7 | OPEN | `science` | **NO** | Will there be at least 7500 measles cases in the U.S. in 2026? (↑7.5k) | $0.379 | $0.260 | 49.9% | +12.0% | $-31.34 | 36 |
+| 8 | OPEN | `science` | **NO** | Will there be at least 7000 measles cases in the U.S. in 2026? (↑7k) | $0.127 | $0.014 | 24.7% | +12.0% | $-88.96 | 21 |
+| 9 | OPEN | `science` | **YES** | Skin cancer vaccine FDA approved by June 30, 2027? (June 30, 2027) | $0.076 | $0.060 | 13.6% | +6.1% | $-20.74 | 20 |
 | 10 | CLOSED | `weather` | **NO** | Will the highest temperature in Seoul (Incheon) be 15°C on November 26? (15°C) | $0.437 | — | 84.4% | +40.7% | $-100.00 | 26 |
 | 11 | CLOSED | `crypto` | **NO** | Will Bitcoin reach $62,000 November 23-29? (↑ 62,000) | $0.408 | — | 67.9% | +27.0% | $-100.00 | 27 |
 | 12 | CLOSED | `crypto` | **NO** | Will Bitcoin dip to $60,000 on November 26? (↓ 60,000) | $0.338 | $0.540 | 60.4% | +26.6% | $-100.00 | 12 |
