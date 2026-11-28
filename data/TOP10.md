@@ -1,16 +1,16 @@
 # Top 15 High-Conviction Markets Across Top 5 Categories ($100 / Market)
 
 - Active Slots: **9 / 15** ($900.00 deployed, max 3 per category)
-- Open Unrealized PnL: **$-50.44**
+- Open Unrealized PnL: **$-28.18**
 - Closed Realized PnL: **$-76.36** (12 settled)
 
 ## Top 5 Categories Breakdown
 
 | Category | Open / 3 | Closed | Unrealized PnL | Realized PnL |
 |---|---:|---:|---:|---:|
-| `weather` | 3 / 3 | 10 | $-62.50 | $+123.64 |
-| `crypto` | 3 / 3 | 2 | $+166.31 | $-200.00 |
-| `science` | 3 / 3 | 0 | $-154.25 | $+0.00 |
+| `weather` | 3 / 3 | 10 | $-54.66 | $+123.64 |
+| `crypto` | 3 / 3 | 2 | $+181.52 | $-200.00 |
+| `science` | 3 / 3 | 0 | $-155.04 | $+0.00 |
 | `economics` | 0 / 3 | 0 | $+0.00 | $+0.00 |
 | `tech` | 0 / 3 | 0 | $+0.00 | $+0.00 |
 
@@ -18,15 +18,15 @@
 
 | # | Status | Category | Side | Market | Entry | Now (Bid) | Model | Edge | PnL ($100) | Snapshots |
 |---|---|---|---|---|---:|---:|---:|---:|---:|---:|
-| 1 | OPEN | `weather` | **NO** | Will the highest temperature in Dallas be between 72-73°F on November 28? (72-73°F) | $0.631 | $0.590 | 96.7% | +33.5% | $-6.53 | 22 |
-| 2 | OPEN | `weather` | **NO** | Will the highest temperature in Paris be 5°C on November 28? (5°C) | $0.495 | $0.390 | 81.5% | +31.9% | $-21.27 | 12 |
-| 3 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 November 23-29? (↑ 1.00) | $0.337 | $0.690 | 64.5% | +30.8% | $+104.76 | 19 |
-| 4 | OPEN | `crypto` | **NO** | Will Bitcoin reach $62,500 in November? (↑ 62,500) | $0.448 | $0.730 | 70.8% | +26.0% | $+62.97 | 46 |
-| 5 | OPEN | `weather` | **YES** | Will the highest temperature in Paris be 4°C on November 28? (4°C) | $0.256 | $0.167 | 43.0% | +17.4% | $-34.70 | 12 |
-| 6 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 in November? (↑ 1.00) | $0.599 | $0.590 | 76.4% | +16.6% | $-1.43 | 34 |
-| 7 | OPEN | `science` | **NO** | Will there be at least 7500 measles cases in the U.S. in 2026? (↑7.5k) | $0.379 | $0.210 | 49.9% | +12.0% | $-44.55 | 42 |
-| 8 | OPEN | `science` | **NO** | Will there be at least 7000 measles cases in the U.S. in 2026? (↑7k) | $0.127 | $0.014 | 24.7% | +12.0% | $-88.96 | 27 |
-| 9 | OPEN | `science` | **YES** | Skin cancer vaccine FDA approved by June 30, 2027? (June 30, 2027) | $0.076 | $0.060 | 13.6% | +6.1% | $-20.74 | 26 |
+| 1 | OPEN | `weather` | **NO** | Will the highest temperature in Dallas be between 72-73°F on November 28? (72-73°F) | $0.631 | $0.600 | 96.7% | +33.5% | $-4.94 | 23 |
+| 2 | OPEN | `weather` | **NO** | Will the highest temperature in Paris be 5°C on November 28? (5°C) | $0.495 | $0.390 | 81.5% | +31.9% | $-21.27 | 13 |
+| 3 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 November 23-29? (↑ 1.00) | $0.337 | $0.730 | 64.5% | +30.8% | $+116.64 | 20 |
+| 4 | OPEN | `crypto` | **NO** | Will Bitcoin reach $62,500 in November? (↑ 62,500) | $0.448 | $0.730 | 70.8% | +26.0% | $+62.97 | 47 |
+| 5 | OPEN | `weather` | **YES** | Will the highest temperature in Paris be 4°C on November 28? (4°C) | $0.256 | $0.183 | 43.0% | +17.4% | $-28.45 | 13 |
+| 6 | OPEN | `crypto` | **NO** | Will XRP reach $1.00 in November? (↑ 1.00) | $0.599 | $0.610 | 76.4% | +16.6% | $+1.91 | 35 |
+| 7 | OPEN | `science` | **NO** | Will there be at least 7500 measles cases in the U.S. in 2026? (↑7.5k) | $0.379 | $0.210 | 49.9% | +12.0% | $-44.55 | 43 |
+| 8 | OPEN | `science` | **NO** | Will there be at least 7000 measles cases in the U.S. in 2026? (↑7k) | $0.127 | $0.013 | 24.7% | +12.0% | $-89.75 | 28 |
+| 9 | OPEN | `science` | **YES** | Skin cancer vaccine FDA approved by June 30, 2027? (June 30, 2027) | $0.076 | $0.060 | 13.6% | +6.1% | $-20.74 | 27 |
 | 10 | CLOSED | `weather` | **NO** | Will the highest temperature in Seoul (Incheon) be 15°C on November 26? (15°C) | $0.437 | — | 84.4% | +40.7% | $-100.00 | 26 |
 | 11 | CLOSED | `crypto` | **NO** | Will Bitcoin reach $62,000 November 23-29? (↑ 62,000) | $0.408 | — | 67.9% | +27.0% | $-100.00 | 27 |
 | 12 | CLOSED | `crypto` | **NO** | Will Bitcoin dip to $60,000 on November 26? (↓ 60,000) | $0.338 | $0.540 | 60.4% | +26.6% | $-100.00 | 12 |
